@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#080b12" />
+    <title>KORA</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="aurora aurora-one"></div>
+    <div class="aurora aurora-two"></div>
+    <div class="cursor-glow"></div>
+    <div class="noise"></div>
+
+    <header class="topbar">
+      <a class="brand" href="https://github.com/ahu1e/KORA-NewTab.git" target="_blank" rel="noopener noreferrer" aria-label="Открыть репозиторий KORA">
+        <span class="brand-mark"></span><span>KORA</span>
+      </a>
+      <div class="top-actions">
+        <button class="icon-button" id="focusToggle" aria-label="Режим фокуса" title="Режим фокуса">
+          <svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+        </button>
+        <button class="icon-button" id="settingsButton" aria-label="Настройки" title="Настройки">
+          <svg viewBox="0 0 24 24"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21h-4v-.08A1.7 1.7 0 0 0 8.95 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.56-1.03H3v-4h.08A1.7 1.7 0 0 0 4.6 8.95a1.7 1.7 0 0 0-.34-1.88L4.2 7l2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.56V3h4v.08A1.7 1.7 0 0 0 15.05 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06L19.82 7l-.06.06a1.7 1.7 0 0 0-.34 1.88A1.7 1.7 0 0 0 21 10h.08v4H21A1.7 1.7 0 0 0 19.4 15Z"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <p class="date" id="date"></p>
+        <h1 class="time" id="time">00:00</h1>
+        <p class="greeting" id="greeting">Добрый вечер. <span>На чём сфокусируемся?</span></p>
+        <form class="search" id="searchForm">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+          <input id="searchInput" type="text" placeholder="Искать в интернете" autocomplete="off" autofocus />
+          <kbd>Enter</kbd>
+        </form>
+      </section>
+
+      <section class="dashboard" id="dashboard">
+        <div class="panel links-panel">
+          <div class="panel-head"><div><span class="eyebrow">ПРОСТРАНСТВО</span><h2>Быстрый доступ</h2></div><button class="small-button" id="addLink">+ Добавить</button></div>
+          <div class="links-grid" id="linksGrid"></div>
+        </div>
+
+        <div class="panel tasks-panel">
+          <div class="panel-head"><div><span class="eyebrow">СЕГОДНЯ</span><h2>Фокус-лист</h2></div><span class="task-count" id="taskCount">0 / 0</span></div>
+          <form class="task-form" id="taskForm"><input id="taskInput" maxlength="80" placeholder="Добавить важную задачу…" /><button aria-label="Добавить задачу">+</button></form>
+          <ul class="task-list" id="taskList"></ul>
+          <div class="progress"><i id="progressBar"></i></div>
+        </div>
+      </section>
+    </main>
+
+    <footer><span id="quote">«Внимание — самая редкая форма щедрости.»</span><button id="newQuote" aria-label="Другая цитата">↻</button></footer>
+
+    <dialog id="linkDialog">
+      <form method="dialog" id="linkForm">
+        <div class="modal-head"><div><span class="eyebrow">НОВАЯ ССЫЛКА</span><h2>Добавить сайт</h2></div><button value="cancel" class="close">×</button></div>
+        <label>Название<input id="linkName" required maxlength="24" placeholder="Например, Музыка" /></label>
+        <label>Адрес<input id="linkUrl" required type="url" placeholder="https://…" /></label>
+        <button class="primary" value="default">Добавить ссылку</button>
+      </form>
+    </dialog>
+
+    <aside class="settings" id="settings" aria-hidden="true">
+      <div class="modal-head"><div><span class="eyebrow">ПЕРСОНАЛИЗАЦИЯ</span><h2>Настройки</h2></div><button class="close" id="settingsClose">×</button></div>
+      <label>Ваше имя<input id="nameInput" maxlength="24" placeholder="Как к вам обращаться?" /></label>
+      <div class="setting-row"><span>Показывать секунды</span><button class="switch" id="secondsToggle" role="switch"><i></i></button></div>
+      <div class="setting-section">
+        <span class="eyebrow color-label">ВАШ ФОН</span>
+        <input id="backgroundInput" type="file" accept="image/jpeg,image/png,image/webp" hidden />
+        <div class="background-actions">
+          <button class="upload-button" id="backgroundButton">Выбрать картинку</button>
+          <button class="remove-background" id="removeBackground">Сбросить</button>
+        </div>
+        <label class="range-label">Размытие фона <span id="blurValue">0</span><input id="blurRange" type="range" min="0" max="24" value="0" /></label>
+      </div>
+      <div class="setting-row"><span>Живая подсветка</span><button class="switch on" id="glowToggle" role="switch" aria-checked="true"><i></i></button></div>
+      <span class="eyebrow color-label">ЦВЕТОВОЙ АКЦЕНТ</span>
+      <div class="colors" id="colors"><button data-color="#ff4d6d" class="active"></button><button data-color="#b8ff5a"></button><button data-color="#7c5cff"></button><button data-color="#5ce1ff"></button></div>
+      <p class="settings-note">Изменения сохраняются автоматически.</p>
+    </aside>
+    <div class="backdrop" id="backdrop"></div>
+    <script src="app.js"></script>
+  </body>
+</html>

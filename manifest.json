@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "KORA — Новая вкладка",
+  "version": "1.0.0",
+  "description": "Красивая персональная новая вкладка с фокусом, ссылками и задачами.",
+  "chrome_url_overrides": {
+    "newtab": "index.html"
+  },
+  "permissions": ["storage"]
+}
