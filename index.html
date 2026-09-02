@@ -66,7 +66,7 @@
       <div class="ym-content">
         <span class="ym-service">ЯНДЕКС МУЗЫКА</span>
         <strong id="yandexTitle">Сейчас ничего не играет</strong>
-        <span id="yandexArtist"></span>
+        <div class="ym-meta"><span id="yandexArtist"></span><span id="yandexTime">0:00 / 0:00</span></div>
         <button class="ym-progress" id="yandexProgress" aria-label="Перемотать трек"><i id="yandexProgressBar"></i></button>
       </div>
       <div class="ym-controls">
@@ -109,7 +109,10 @@
       </div>
       <div class="setting-row"><span>Живая подсветка</span><button class="switch on" id="glowToggle" role="switch" aria-checked="true"><i></i></button></div>
       <span class="eyebrow color-label">ЦВЕТОВОЙ АКЦЕНТ</span>
-      <div class="colors" id="colors"><button data-color="#ff4d6d" class="active"></button><button data-color="#b8ff5a"></button><button data-color="#7c5cff"></button><button data-color="#5ce1ff"></button></div>
+      <div class="colors" id="colors">
+        <button data-color="#ff4d6d" class="active" aria-label="Красный"></button><button data-color="#b8ff5a" aria-label="Лаймовый"></button><button data-color="#7c5cff" aria-label="Фиолетовый"></button><button data-color="#5ce1ff" aria-label="Голубой"></button>
+        <label class="custom-color" title="Выбрать свой цвет"><input id="customColor" type="color" value="#ff4d6d" aria-label="Свой цвет" /><span>＋</span></label>
+      </div>
       <p class="settings-note">Изменения сохраняются автоматически.</p>
     </aside>
     <div class="backdrop" id="backdrop"></div>

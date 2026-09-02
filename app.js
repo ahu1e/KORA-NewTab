@@ -26,13 +26,22 @@ let state = {
 async function init(){
   for(const key of Object.keys(state)) state[key] = await store.get(key,state[key]);
   if(!state.bgImage){state.bgImage=defaultBackground;await store.set({bgImage:defaultBackground})}
-  $('#nameInput').value=state.name; document.documentElement.style.setProperty('--accent',state.color);
+  $('#nameInput').value=state.name; applyAccent(state.color);
   $('#secondsToggle').classList.toggle('on',state.seconds); $('#secondsToggle').setAttribute('aria-checked',state.seconds);
   applyBackground();
   renderBackgroundControls(); setSearchMode(state.searchMode, false);
   $('#glowToggle').classList.toggle('on',state.glow); $('#glowToggle').setAttribute('aria-checked',state.glow); document.body.classList.toggle('glow-off',!state.glow);
-  document.querySelectorAll('.colors button').forEach(b=>b.classList.toggle('active',b.dataset.color===state.color));
   updateClock(); renderLinks(); renderTasks(); setInterval(updateClock,1000);
+}
+function applyAccent(color){
+  if(!/^#[0-9a-f]{6}$/i.test(color))color='#ff4d6d';
+  state.color=color.toLowerCase();
+  const rgb=[1,3,5].map(index=>parseInt(state.color.slice(index,index+2),16));
+  const luminance=rgb[0]*.299+rgb[1]*.587+rgb[2]*.114;
+  document.documentElement.style.setProperty('--accent',state.color);
+  document.documentElement.style.setProperty('--accent-ink',luminance>155?'#090b0a':'#ffffff');
+  $('#customColor').value=state.color;
+  document.querySelectorAll('.colors button[data-color]').forEach(button=>button.classList.toggle('active',button.dataset.color===state.color));
 }
 function updateClock(){
   const now=new Date(), h=now.getHours();
@@ -93,21 +102,30 @@ $('#removeBackground').onclick=async()=>{state.bgImage=defaultBackground;await s
 document.querySelectorAll('[data-bg-control]').forEach(control=>{control.oninput=e=>{state[e.target.dataset.bgControl]=+e.target.value;renderBackgroundControls();applyBackground()};control.onchange=e=>store.set({[e.target.dataset.bgControl]:state[e.target.dataset.bgControl]})});
 $('#editorReset').onclick=async()=>{Object.assign(state,{bgBlur:0,bgBrightness:100,bgContrast:100,bgSaturation:100,bgShade:44});renderBackgroundControls();applyBackground();await store.set({bgBlur:0,bgBrightness:100,bgContrast:100,bgSaturation:100,bgShade:44})};
 $('#glowToggle').onclick=async()=>{state.glow=!state.glow;$('#glowToggle').classList.toggle('on',state.glow);$('#glowToggle').setAttribute('aria-checked',state.glow);document.body.classList.toggle('glow-off',!state.glow);await store.set({glow:state.glow})};
-$('#colors').onclick=async e=>{const b=e.target.closest('button');if(!b)return;state.color=b.dataset.color;document.documentElement.style.setProperty('--accent',state.color);document.querySelectorAll('.colors button').forEach(x=>x.classList.toggle('active',x===b));await store.set({color:state.color})};
+$('#colors').onclick=async e=>{const button=e.target.closest('button[data-color]');if(!button)return;applyAccent(button.dataset.color);await store.set({color:state.color})};
+$('#customColor').oninput=e=>applyAccent(e.target.value);
+$('#customColor').onchange=()=>store.set({color:state.color});
 $('#focusToggle').onclick=()=>document.body.classList.toggle('focus-mode');$('#newQuote').onclick=()=>$('#quote').textContent=quotes[Math.floor(Math.random()*quotes.length)];
 let glowFrame;
 document.addEventListener('pointermove',e=>{if(!state.glow)return;cancelAnimationFrame(glowFrame);glowFrame=requestAnimationFrame(()=>{document.documentElement.style.setProperty('--mx',`${e.clientX}px`);document.documentElement.style.setProperty('--my',`${e.clientY}px`)})});
 
-let yandexTabId=null,yandexWindowId=null,yandexDuration=0,yandexLastUpdate=0;
+let yandexTabId=null,yandexWindowId=null,yandexLastUpdate=0;
+function formatMediaTime(seconds){
+  if(!Number.isFinite(seconds)||seconds<0)return'0:00';
+  const minutes=Math.floor(seconds/60),rest=Math.floor(seconds%60);
+  return`${minutes}:${String(rest).padStart(2,'0')}`;
+}
 function updateYandexPlayer(media){
   const player=$('#yandexPlayer');
   if(!media?.available){player.hidden=true;return}
-  player.hidden=false;yandexLastUpdate=Date.now();yandexDuration=media.duration||0;
+  player.hidden=false;yandexLastUpdate=Date.now();
   $('#yandexTitle').textContent=media.title||'Яндекс Музыка';
   $('#yandexArtist').textContent=media.artist||'Открыта музыкальная вкладка';
+  $('#yandexTime').textContent=`${formatMediaTime(media.currentTime)} / ${formatMediaTime(media.duration)}`;
   $('#yandexPlay').textContent=media.paused?'▶':'Ⅱ';
   $('#yandexPlay').setAttribute('aria-label',media.paused?'Продолжить':'Пауза');
-  $('#yandexProgressBar').style.width=media.duration?`${Math.min(100,media.currentTime/media.duration*100)}%`:'0';
+  const progress=Number.isFinite(media.progress)?media.progress:(media.duration?media.currentTime/media.duration:0);
+  $('#yandexProgressBar').style.width=`${Math.max(0,Math.min(100,progress*100))}%`;
   const artwork=$('#yandexArtwork');
   if(media.artwork){artwork.src=media.artwork;artwork.hidden=false}else{artwork.removeAttribute('src');artwork.hidden=true}
 }
@@ -120,7 +138,7 @@ if(typeof chrome!=='undefined'&&chrome.runtime?.onMessage){
   setInterval(()=>{if(yandexLastUpdate&&Date.now()-yandexLastUpdate>3500)$('#yandexPlayer').hidden=true},1500);
 }
 document.querySelectorAll('[data-yandex-action]').forEach(button=>button.onclick=()=>sendYandexControl(button.dataset.yandexAction));
-$('#yandexProgress').onclick=e=>{if(!yandexDuration)return;const rect=e.currentTarget.getBoundingClientRect();sendYandexControl('seek',{time:(e.clientX-rect.left)/rect.width*yandexDuration})};
+$('#yandexProgress').onclick=e=>{const rect=e.currentTarget.getBoundingClientRect();sendYandexControl('seek',{ratio:(e.clientX-rect.left)/rect.width})};
 $('#yandexArtwork').onerror=e=>{e.currentTarget.hidden=true};
 $('#yandexOpen').onclick=()=>{if(yandexTabId===null||typeof chrome==='undefined'||!chrome.tabs)return;chrome.tabs.update(yandexTabId,{active:true},()=>{if(yandexWindowId!==null&&chrome.windows)chrome.windows.update(yandexWindowId,{focused:true})})};
 init();
