@@ -35,6 +35,10 @@
         <form class="search" id="searchForm">
           <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
           <input id="searchInput" type="text" placeholder="Искать в интернете" autocomplete="off" autofocus />
+          <div class="search-modes" aria-label="Режим поиска">
+            <button type="button" class="search-mode active" data-mode="web" aria-pressed="true">WEB</button>
+            <button type="button" class="search-mode" data-mode="gemini" aria-pressed="false"><span class="gemini-star">✦</span> GEMINI</button>
+          </div>
           <kbd>Enter</kbd>
         </form>
       </section>
@@ -53,6 +57,24 @@
         </div>
       </section>
     </main>
+
+    <section class="ym-player" id="yandexPlayer" aria-label="Сейчас играет в Яндекс Музыке" hidden>
+      <button class="ym-cover" id="yandexOpen" aria-label="Открыть Яндекс Музыку">
+        <img id="yandexArtwork" alt="" referrerpolicy="no-referrer" />
+        <span id="yandexFallback">Я</span>
+      </button>
+      <div class="ym-content">
+        <span class="ym-service">ЯНДЕКС МУЗЫКА</span>
+        <strong id="yandexTitle">Сейчас ничего не играет</strong>
+        <span id="yandexArtist"></span>
+        <button class="ym-progress" id="yandexProgress" aria-label="Перемотать трек"><i id="yandexProgressBar"></i></button>
+      </div>
+      <div class="ym-controls">
+        <button data-yandex-action="previous" aria-label="Предыдущий трек">‹</button>
+        <button class="ym-play" id="yandexPlay" data-yandex-action="playpause" aria-label="Пауза">Ⅱ</button>
+        <button data-yandex-action="next" aria-label="Следующий трек">›</button>
+      </div>
+    </section>
 
     <footer><span id="quote">«Внимание — самая редкая форма щедрости.»</span><button id="newQuote" aria-label="Другая цитата">↻</button></footer>
 
@@ -76,7 +98,14 @@
           <button class="upload-button" id="backgroundButton">Выбрать картинку</button>
           <button class="remove-background" id="removeBackground">Сбросить</button>
         </div>
-        <label class="range-label">Размытие фона <span id="blurValue">0</span><input id="blurRange" type="range" min="0" max="24" value="0" /></label>
+        <div class="background-editor">
+          <label class="range-label">Яркость <span id="brightnessValue">100%</span><input id="brightnessRange" data-bg-control="bgBrightness" type="range" min="40" max="160" value="100" /></label>
+          <label class="range-label">Контраст <span id="contrastValue">100%</span><input id="contrastRange" data-bg-control="bgContrast" type="range" min="50" max="180" value="100" /></label>
+          <label class="range-label">Насыщенность <span id="saturationValue">100%</span><input id="saturationRange" data-bg-control="bgSaturation" type="range" min="0" max="180" value="100" /></label>
+          <label class="range-label">Затемнение <span id="shadeValue">44%</span><input id="shadeRange" data-bg-control="bgShade" type="range" min="0" max="85" value="44" /></label>
+          <label class="range-label">Размытие <span id="blurValue">0px</span><input id="blurRange" data-bg-control="bgBlur" type="range" min="0" max="24" value="0" /></label>
+          <button class="editor-reset" id="editorReset" type="button">Сбросить обработку</button>
+        </div>
       </div>
       <div class="setting-row"><span>Живая подсветка</span><button class="switch on" id="glowToggle" role="switch" aria-checked="true"><i></i></button></div>
       <span class="eyebrow color-label">ЦВЕТОВОЙ АКЦЕНТ</span>

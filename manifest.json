@@ -1,10 +1,22 @@
 {
   "manifest_version": 3,
   "name": "KORA — Новая вкладка",
-  "version": "1.0.0",
-  "description": "Красивая персональная новая вкладка с фокусом, ссылками и задачами.",
+  "version": "1.2.0",
+  "description": "Персональная новая вкладка с поиском, задачами, живым фоном и плеером Яндекс Музыки.",
   "chrome_url_overrides": {
     "newtab": "index.html"
   },
-  "permissions": ["storage"]
+  "permissions": ["storage"],
+  "content_scripts": [
+    {
+      "matches": ["https://gemini.google.com/*"],
+      "js": ["gemini-bridge.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://music.yandex.ru/*", "https://music.yandex.com/*"],
+      "js": ["yandex-music.js"],
+      "run_at": "document_idle"
+    }
+  ]
 }
