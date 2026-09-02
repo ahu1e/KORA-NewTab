@@ -97,6 +97,22 @@
     }) || null;
   };
 
+  const togglePlayback = () => {
+    const audio = getAudio();
+    if (!audio) return false;
+
+    if (!audio.paused) {
+      audio.pause();
+      return true;
+    }
+
+    const playback = audio.play();
+    if (playback?.catch) {
+      playback.catch(() => findControl('playpause')?.click());
+    }
+    return true;
+  };
+
   const getState = () => {
     const player = getPlayer();
     const audio = getAudio();
@@ -141,7 +157,14 @@
   chrome.runtime.onMessage.addListener((message, _sender, respond) => {
     if (message?.type !== 'KORA_YANDEX_CONTROL') return;
     let handled = false;
-    if (['playpause', 'next', 'previous'].includes(message.action)) {
+    if (message.action === 'playpause') {
+      handled = togglePlayback();
+      if (!handled) {
+        const button = findControl('playpause');
+        if (button) { button.click(); handled = true; }
+      }
+    }
+    if (['next', 'previous'].includes(message.action)) {
       const button = findControl(message.action);
       if (button) { button.click(); handled = true; }
     }
