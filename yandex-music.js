@@ -36,9 +36,11 @@
       if (Number.isFinite(current) && Number.isFinite(maximum) && maximum > 0) sliderProgress = current / maximum;
     }
 
-    const times = [...player.querySelectorAll('span, time, div')]
+    const timeLabels = (player.innerText || '').match(/\b\d{1,2}:\d{2}(?::\d{2})?\b/g) || [];
+    const leafLabels = [...player.querySelectorAll('span, time, div')]
       .filter((item) => item.children.length === 0 && /^\d{1,2}:\d{2}(?::\d{2})?$/.test(item.textContent.trim()))
-      .map((item) => parseTime(item.textContent));
+      .map((item) => item.textContent.trim());
+    const times = (timeLabels.length >= 2 ? timeLabels : leafLabels).map(parseTime);
     if (times.length >= 2) {
       const currentTime = Math.min(times[0], times[1]);
       const duration = Math.max(times[0], times[1]);
@@ -74,6 +76,18 @@
       if (button) return button;
     }
     const buttons = [...player.querySelectorAll('button')];
+    if (action === 'playpause') {
+      const previous = findControl('previous');
+      const next = findControl('next');
+      const previousIndex = buttons.indexOf(previous);
+      const nextIndex = buttons.indexOf(next);
+      if (previousIndex >= 0 && nextIndex >= 0) {
+        const start = Math.min(previousIndex, nextIndex);
+        const end = Math.max(previousIndex, nextIndex);
+        const middle = buttons.slice(start + 1, end).find((button) => !button.disabled);
+        if (middle) return middle;
+      }
+    }
     return buttons.find((button) => {
       const marker = `${button.getAttribute('aria-label') || ''} ${button.title || ''} ${button.getAttribute('data-test-id') || ''}`.toLowerCase();
       if (action === 'next') return /next|следующ/.test(marker);
@@ -88,8 +102,9 @@
     const audio = getAudio();
     const metadata = navigator.mediaSession?.metadata;
     const domProgress = getDomProgress(player);
-    const currentTime = audio?.currentTime || domProgress.currentTime;
-    const duration = Number.isFinite(audio?.duration) ? audio.duration : domProgress.duration;
+    const audioDuration = Number.isFinite(audio?.duration) && audio.duration > 0 ? audio.duration : 0;
+    const currentTime = audioDuration ? audio.currentTime : domProgress.currentTime;
+    const duration = audioDuration || domProgress.duration;
     const playButton = findControl('playpause');
     const buttonLabel = playButton?.getAttribute('aria-label')?.toLowerCase() || '';
     const paused = audio ? audio.paused : !['pause', 'пауза'].some((word) => buttonLabel.includes(word));
@@ -99,7 +114,7 @@
     return {
       available: Boolean(title || audio || playButton), title: title || 'Яндекс Музыка', artist, artwork, paused,
       currentTime: currentTime || 0, duration: duration || 0,
-      progress: duration > 0 ? currentTime / duration : domProgress.progress,
+      progress: audioDuration ? currentTime / duration : domProgress.progress,
     };
   };
 
@@ -109,7 +124,7 @@
 
   const setProgress = (ratio) => {
     const audio = getAudio();
-    if (audio && Number.isFinite(audio.duration)) { audio.currentTime = audio.duration * ratio; return true; }
+    if (audio && Number.isFinite(audio.duration) && audio.duration > 0) { audio.currentTime = audio.duration * ratio; return true; }
     const player = getPlayer();
     const sliders = [...player.querySelectorAll('input[type="range"], [role="slider"]')];
     const progress = sliders.find((item) => /progress|прогресс|timeline|position|позици/i.test(`${item.getAttribute('aria-label') || ''} ${item.getAttribute('data-test-id') || ''}`));
