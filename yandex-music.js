@@ -29,21 +29,22 @@
       const label = `${item.getAttribute('aria-label') || ''} ${item.getAttribute('data-test-id') || ''}`.toLowerCase();
       return ['progress', 'прогресс', 'timeline', 'position', 'позици'].some((word) => label.includes(word));
     });
+    let sliderProgress = 0;
     if (progress) {
       const current = Number(progress.value ?? progress.getAttribute('aria-valuenow'));
       const maximum = Number(progress.max ?? progress.getAttribute('aria-valuemax'));
-      if (Number.isFinite(current) && Number.isFinite(maximum) && maximum > 0) {
-        return { currentTime: current, duration: maximum, progress: current / maximum };
-      }
+      if (Number.isFinite(current) && Number.isFinite(maximum) && maximum > 0) sliderProgress = current / maximum;
     }
 
     const times = [...player.querySelectorAll('span, time, div')]
       .filter((item) => item.children.length === 0 && /^\d{1,2}:\d{2}(?::\d{2})?$/.test(item.textContent.trim()))
       .map((item) => parseTime(item.textContent));
-    if (times.length >= 2 && times[1] > 0) {
-      return { currentTime: times[0], duration: times[1], progress: times[0] / times[1] };
+    if (times.length >= 2) {
+      const currentTime = Math.min(times[0], times[1]);
+      const duration = Math.max(times[0], times[1]);
+      if (duration > 0) return { currentTime, duration, progress: currentTime / duration };
     }
-    return { currentTime: 0, duration: 0, progress: 0 };
+    return { currentTime: 0, duration: 0, progress: sliderProgress };
   };
 
   const findControl = (action) => {
@@ -53,26 +54,33 @@
         'button[aria-label="Playback"]', 'button[aria-label="Воспроизведение"]',
         'button[aria-label="Pause"]', 'button[aria-label="Пауза"]',
         'button[aria-label="Play"]', 'button[aria-label="Играть"]',
-        '[data-test-id*="play"] button', 'button[data-test-id*="play"]',
+        'button[data-test-id="play"]', 'button[data-test-id="pause"]',
+        'button[class*="PlayButton"]', '[class*="PlayButton"] button',
       ],
       next: [
         'button[aria-label="Next track"]', 'button[aria-label="Следующий трек"]',
         'button[aria-label="Next"]', 'button[aria-label="Следующий"]',
-        '[data-test-id*="next"] button', 'button[data-test-id*="next"]',
-        'button[class*="next"]', '[class*="next"] button',
+        'button[data-test-id*="next"]', 'button[class*="next"]',
       ],
       previous: [
         'button[aria-label="Previous track"]', 'button[aria-label="Предыдущий трек"]',
         'button[aria-label="Previous"]', 'button[aria-label="Предыдущий"]',
-        '[data-test-id*="previous"] button', 'button[data-test-id*="previous"]',
-        'button[class*="prev"]', '[class*="prev"] button',
+        'button[data-test-id*="previous"]', 'button[data-test-id*="prev"]',
+        'button[class*="prev"]',
       ],
     };
     for (const selector of selectors[action] || []) {
       const button = player.querySelector(selector) || document.querySelector(selector);
       if (button) return button;
     }
-    return null;
+    const buttons = [...player.querySelectorAll('button')];
+    return buttons.find((button) => {
+      const marker = `${button.getAttribute('aria-label') || ''} ${button.title || ''} ${button.getAttribute('data-test-id') || ''}`.toLowerCase();
+      if (action === 'next') return /next|следующ/.test(marker);
+      if (action === 'previous') return /previous|предыдущ|назад|(^|[_-])prev([_-]|$)/.test(marker);
+      if (/next|следующ|previous|предыдущ|назад|(^|[_-])prev([_-]|$)/.test(marker)) return false;
+      return /playback|воспроизвед|pause|пауза|(^|[_-])play([_-]|$)|играть/.test(marker);
+    }) || null;
   };
 
   const getState = () => {
