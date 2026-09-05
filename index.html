@@ -80,7 +80,7 @@
 
     <dialog id="linkDialog">
       <form method="dialog" id="linkForm">
-        <div class="modal-head"><div><span class="eyebrow">НОВАЯ ССЫЛКА</span><h2>Добавить сайт</h2></div><button value="cancel" class="close">×</button></div>
+        <div class="modal-head"><div><span class="eyebrow">НОВАЯ ССЫЛКА</span><h2>Добавить сайт</h2></div><button type="button" id="linkClose" class="close" aria-label="Закрыть">×</button></div>
         <label>Название<input id="linkName" required maxlength="24" placeholder="Например, Музыка" /></label>
         <label>Адрес<input id="linkUrl" required type="url" placeholder="https://…" /></label>
         <button class="primary" value="default">Добавить ссылку</button>
@@ -99,6 +99,10 @@
           <button class="remove-background" id="removeBackground">Сбросить</button>
         </div>
         <div class="background-editor">
+          <label class="range-label">Масштаб <span id="zoomValue">100%</span><input id="zoomRange" data-bg-control="bgZoom" type="range" min="100" max="200" value="100" /></label>
+          <label class="range-label">По горизонтали <span id="positionXValue">50%</span><input id="positionXRange" data-bg-control="bgX" type="range" min="0" max="100" value="50" /></label>
+          <label class="range-label">По вертикали <span id="positionYValue">50%</span><input id="positionYRange" data-bg-control="bgY" type="range" min="0" max="100" value="50" /></label>
+          <button class="editor-reset" id="cropReset" type="button">Сбросить положение</button>
           <label class="range-label">Яркость <span id="brightnessValue">100%</span><input id="brightnessRange" data-bg-control="bgBrightness" type="range" min="40" max="160" value="100" /></label>
           <label class="range-label">Контраст <span id="contrastValue">100%</span><input id="contrastRange" data-bg-control="bgContrast" type="range" min="50" max="180" value="100" /></label>
           <label class="range-label">Насыщенность <span id="saturationValue">100%</span><input id="saturationRange" data-bg-control="bgSaturation" type="range" min="0" max="180" value="100" /></label>
@@ -113,6 +117,8 @@
         <button data-color="#ff4d6d" class="active" aria-label="Красный"></button><button data-color="#b8ff5a" aria-label="Лаймовый"></button><button data-color="#7c5cff" aria-label="Фиолетовый"></button><button data-color="#5ce1ff" aria-label="Голубой"></button>
         <label class="custom-color" title="Выбрать свой цвет"><input id="customColor" type="color" value="#ff4d6d" aria-label="Свой цвет" /><span>＋</span></label>
       </div>
+      <button class="editor-reset" id="accentFromBackground" type="button">Подобрать цвет из обоев</button>
+      <p id="accentStatus" class="settings-note" role="status"></p>
       <p class="settings-note">Изменения сохраняются автоматически.</p>
     </aside>
     <div class="backdrop" id="backdrop"></div>

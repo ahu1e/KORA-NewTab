@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "KORA — Новая вкладка",
-  "version": "1.3.3",
+  "version": "1.4.0",
   "description": "Персональная новая вкладка с поиском, задачами, живым фоном и плеером Яндекс Музыки.",
   "chrome_url_overrides": {
     "newtab": "index.html"

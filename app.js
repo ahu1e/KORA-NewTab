@@ -5,7 +5,7 @@ const store = {
     ? new Promise((resolve) => chrome.storage.local.get({ [key]: fallback }, (v) => resolve(v[key])))
     : Promise.resolve(JSON.parse(localStorage.getItem(key) ?? JSON.stringify(fallback))),
   set: (data) => hasChromeStorage
-    ? new Promise((resolve) => chrome.storage.local.set(data, resolve))
+    ? new Promise((resolve,reject) => chrome.storage.local.set(data,()=>{const error=chrome.runtime.lastError;error?reject(new Error(error.message)):resolve()}))
     : Promise.resolve(Object.entries(data).forEach(([key, value]) => localStorage.setItem(key, JSON.stringify(value)))),
 };
 
@@ -20,10 +20,11 @@ const defaultBackground = 'assets/default-background.png';
 let state = {
   name:'', seconds:false, color:'#ff4d6d', links:defaults, tasks:[], searchMode:'web',
   bgImage:defaultBackground, bgBlur:0, bgBrightness:100, bgContrast:100,
-  bgSaturation:100, bgShade:44, glow:true,
+  bgSaturation:100, bgShade:44, bgZoom:100, bgX:50, bgY:50, glow:true,
 };
 
 async function init(){
+  await mutateTasks(() => {});
   for(const key of Object.keys(state)) state[key] = await store.get(key,state[key]);
   if(!state.bgImage){state.bgImage=defaultBackground;await store.set({bgImage:defaultBackground})}
   $('#nameInput').value=state.name; applyAccent(state.color);
@@ -58,10 +59,23 @@ function renderLinks(){
 function renderTasks(){
   $('#taskList').innerHTML=state.tasks.map((t,i)=>`<li class="task ${t.done?'done':''}"><button class="task-check" data-check="${i}" aria-label="Готово"></button><span>${escapeHtml(t.text)}</span><button class="task-delete" data-delete="${i}" aria-label="Удалить">×</button></li>`).join('');
   const done=state.tasks.filter(t=>t.done).length,total=state.tasks.length;$('#taskCount').textContent=`${done} / ${total}`;$('#progressBar').style.width=total?`${done/total*100}%`:'0';
-  document.querySelectorAll('[data-check]').forEach(b=>b.onclick=async()=>{state.tasks[+b.dataset.check].done=!state.tasks[+b.dataset.check].done;await saveTasks()});
-  document.querySelectorAll('[data-delete]').forEach(b=>b.onclick=async()=>{state.tasks.splice(+b.dataset.delete,1);await saveTasks()});
+  document.querySelectorAll('[data-check]').forEach(b=>{const id=state.tasks[+b.dataset.check].id;b.onclick=()=>mutateTasks(tasks=>{const task=tasks.find(t=>t.id===id);if(task)task.done=!task.done})});
+  document.querySelectorAll('[data-delete]').forEach(b=>{const id=state.tasks[+b.dataset.delete].id;b.onclick=()=>mutateTasks(tasks=>{const index=tasks.findIndex(t=>t.id===id);if(index>=0)tasks.splice(index,1)})});
 }
-async function saveTasks(){await store.set({tasks:state.tasks});renderTasks()}
+async function mutateTasks(change){
+  return navigator.locks.request('kora-tasks',async()=>{
+    const tasks=await store.get('tasks',[]);
+    tasks.forEach(task=>{if(!task.id)task.id=crypto.randomUUID()});
+    change(tasks);
+    await store.set({tasks});state.tasks=tasks;renderTasks();
+  });
+}
+if(hasChromeStorage)chrome.storage.onChanged.addListener((changes,area)=>{
+  if(area==='local'&&changes.tasks){state.tasks=changes.tasks.newValue||[];renderTasks()}
+});
+else window.addEventListener('storage',event=>{
+  if(event.key==='tasks'){state.tasks=JSON.parse(event.newValue||'[]');renderTasks()}
+});
 function escapeHtml(s){const d=document.createElement('div');d.textContent=String(s);return d.innerHTML}
 function safeUrl(url){try{const u=new URL(url);return ['http:','https:'].includes(u.protocol)?u.href:'#'}catch{return '#'}}
 function applyBackground(){
@@ -71,10 +85,14 @@ function applyBackground(){
   document.documentElement.style.setProperty('--bg-contrast',state.bgContrast/100);
   document.documentElement.style.setProperty('--bg-saturation',state.bgSaturation/100);
   document.documentElement.style.setProperty('--shade',state.bgShade/100);
+  document.documentElement.style.setProperty('--bg-zoom',state.bgZoom/100);
+  document.documentElement.style.setProperty('--bg-x',`${state.bgX}%`);
+  document.documentElement.style.setProperty('--bg-y',`${state.bgY}%`);
   $('#removeBackground').style.display=state.bgImage===defaultBackground?'none':'block';
 }
 function renderBackgroundControls(){
   const controls={bgBrightness:['#brightnessRange','#brightnessValue','%'],bgContrast:['#contrastRange','#contrastValue','%'],bgSaturation:['#saturationRange','#saturationValue','%'],bgShade:['#shadeRange','#shadeValue','%'],bgBlur:['#blurRange','#blurValue','px']};
+  Object.assign(controls,{bgZoom:['#zoomRange','#zoomValue','%'],bgX:['#positionXRange','#positionXValue','%'],bgY:['#positionYRange','#positionYValue','%']});
   Object.entries(controls).forEach(([key,[range,value,suffix]])=>{$(range).value=state[key];$(value).textContent=`${state[key]}${suffix}`});
 }
 async function setSearchMode(mode, save=true){
@@ -87,9 +105,18 @@ function prepareImage(file){
   return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onerror=reject;reader.onload=()=>{const image=new Image();image.onerror=reject;image.onload=()=>{const maxW=1920,maxH=1080,scale=Math.min(1,maxW/image.width,maxH/image.height),canvas=document.createElement('canvas');canvas.width=Math.round(image.width*scale);canvas.height=Math.round(image.height*scale);canvas.getContext('2d').drawImage(image,0,0,canvas.width,canvas.height);resolve(canvas.toDataURL('image/jpeg',.84))};image.src=reader.result};reader.readAsDataURL(file)});
 }
 
-$('#searchForm').onsubmit=e=>{e.preventDefault();const q=$('#searchInput').value.trim();if(!q)return;if(state.searchMode==='gemini'){location.href=`https://gemini.google.com/app?koraPrompt=${encodeURIComponent(q)}`;return}const url=/^(https?:\/\/|[\w-]+\.[a-z]{2,})/i.test(q)?(q.startsWith('http')?q:`https://${q}`):`https://www.google.com/search?q=${encodeURIComponent(q)}`;location.href=url};
+function searchDestination(q){
+  if(!/\s/.test(q))try{
+    const url=new URL(/^https?:\/\//i.test(q)?q:`https://${q}`);
+    if(['http:','https:'].includes(url.protocol)&&url.hostname.includes('.')&&!url.username&&!url.password)return url.href;
+  }catch{}
+  return `https://www.google.com/search?q=${encodeURIComponent(q)}`;
+}
+$('#searchForm').onsubmit=e=>{e.preventDefault();const q=$('#searchInput').value.trim();if(!q)return;location.href=state.searchMode==='gemini'?`https://gemini.google.com/app?koraPrompt=${encodeURIComponent(q)}`:searchDestination(q)};
 document.querySelectorAll('.search-mode').forEach(button=>button.onclick=()=>setSearchMode(button.dataset.mode));
-$('#taskForm').onsubmit=async e=>{e.preventDefault();const input=$('#taskInput'),text=input.value.trim();if(!text)return;state.tasks.unshift({text,done:false});input.value='';await saveTasks()};
+$('#taskForm').onsubmit=async e=>{e.preventDefault();const input=$('#taskInput'),text=input.value.trim();if(!text)return;input.value='';await mutateTasks(tasks=>tasks.unshift({id:crypto.randomUUID(),text,done:false}))};
+$('#linkClose').onclick=()=>$('#linkDialog').close();
+$('#cropReset').onclick=async()=>{Object.assign(state,{bgZoom:100,bgX:50,bgY:50});applyBackground();renderBackgroundControls();await store.set({bgZoom:100,bgX:50,bgY:50})};
 $('#addLink').onclick=()=>$('#linkDialog').showModal();
 $('#linkForm').onsubmit=async e=>{e.preventDefault();const name=$('#linkName').value.trim(),url=$('#linkUrl').value.trim();if(!name||!url)return;state.links.push({name,url});await store.set({links:state.links});renderLinks();$('#linkDialog').close();e.target.reset()};
 const closeSettings=()=>{$('#settings').classList.remove('open');$('#settings').setAttribute('aria-hidden','true');$('#backdrop').classList.remove('show')};
@@ -105,11 +132,47 @@ $('#glowToggle').onclick=async()=>{state.glow=!state.glow;$('#glowToggle').class
 $('#colors').onclick=async e=>{const button=e.target.closest('button[data-color]');if(!button)return;applyAccent(button.dataset.color);await store.set({color:state.color})};
 $('#customColor').oninput=e=>applyAccent(e.target.value);
 $('#customColor').onchange=()=>store.set({color:state.color});
+$('#accentFromBackground').onclick=async()=>{
+  const button=$('#accentFromBackground'),status=$('#accentStatus'),source=state.bgImage;
+  button.disabled=true;status.textContent='Подбираем цвет…';
+  try{
+    const picture=new Image();picture.src=source;await picture.decode();
+    const canvas=document.createElement('canvas');canvas.width=64;canvas.height=64;
+    const context=canvas.getContext('2d');context.drawImage(picture,0,0,64,64);
+    const pixels=context.getImageData(0,0,64,64).data,buckets=new Map();
+    for(let i=0;i<pixels.length;i+=4){
+      const rgb=[pixels[i],pixels[i+1],pixels[i+2]],max=Math.max(...rgb),min=Math.min(...rgb);
+      if(pixels[i+3]<128||max<45||min>225||max-min<25)continue;
+      const key=rgb.map(channel=>Math.floor(channel/32)).join(',');
+      const bucket=buckets.get(key)||{score:0,count:0,rgb:[0,0,0]};
+      bucket.score+=(max-min)/max;bucket.count++;rgb.forEach((channel,index)=>bucket.rgb[index]+=channel);buckets.set(key,bucket);
+    }
+    const best=[...buckets.values()].sort((a,b)=>b.score-a.score)[0];
+    if(source!==state.bgImage){status.textContent='Фон изменился — нажмите ещё раз.';return}
+    if(!best){status.textContent='Фон почти чёрно-белый. Выберите акцент из палитры.';return}
+    const rgb=best.rgb.map(channel=>Math.round(channel/best.count));
+    const boost=Math.max(1,160/Math.max(...rgb));
+    const color='#'+rgb.map(channel=>Math.min(255,Math.round(channel*boost)).toString(16).padStart(2,'0')).join('');
+    await store.set({color});applyAccent(color);status.textContent='Цвет подобран из обоев.';
+  }catch{status.textContent='Не удалось прочитать картинку. Попробуйте загрузить её снова.'}
+  finally{button.disabled=false}
+};
 $('#focusToggle').onclick=()=>document.body.classList.toggle('focus-mode');$('#newQuote').onclick=()=>$('#quote').textContent=quotes[Math.floor(Math.random()*quotes.length)];
 let glowFrame;
 document.addEventListener('pointermove',e=>{if(!state.glow)return;cancelAnimationFrame(glowFrame);glowFrame=requestAnimationFrame(()=>{document.documentElement.style.setProperty('--mx',`${e.clientX}px`);document.documentElement.style.setProperty('--my',`${e.clientY}px`)})});
 
 let yandexTabId=null,yandexWindowId=null,yandexLastUpdate=0;
+const yandexSources=new Map();
+function selectYandexSource(){
+  const now=Date.now();
+  for(const [id,source] of yandexSources)if(now-source.updated>10000)yandexSources.delete(id);
+  const sources=[...yandexSources.values()].filter(source=>source.state.available);
+  const current=yandexSources.get(yandexTabId);
+  const playing=sources.filter(source=>source.state.paused===false);
+  const selected=playing.find(source=>source===current)||playing[0]||sources.find(source=>source===current)||sources[0];
+  if(!selected){yandexTabId=null;yandexWindowId=null;$('#yandexPlayer').hidden=true;return}
+  yandexTabId=selected.id;yandexWindowId=selected.windowId;updateYandexPlayer(selected.state);
+}
 function formatMediaTime(seconds){
   if(!Number.isFinite(seconds)||seconds<0)return'0:00';
   const minutes=Math.floor(seconds/60),rest=Math.floor(seconds%60);
@@ -134,8 +197,8 @@ function sendYandexControl(action,extra={}){
   chrome.tabs.sendMessage(yandexTabId,{type:'KORA_YANDEX_CONTROL',action,...extra},()=>void chrome.runtime.lastError);
 }
 if(typeof chrome!=='undefined'&&chrome.runtime?.onMessage){
-  chrome.runtime.onMessage.addListener((message,sender)=>{if(message?.type!=='KORA_YANDEX_STATE'||!sender.tab)return;yandexTabId=sender.tab.id;yandexWindowId=sender.tab.windowId;updateYandexPlayer(message.state)});
-  setInterval(()=>{if(yandexLastUpdate&&Date.now()-yandexLastUpdate>3500)$('#yandexPlayer').hidden=true},1500);
+  chrome.runtime.onMessage.addListener((message,sender)=>{if(message?.type!=='KORA_YANDEX_STATE'||!sender.tab||!message.state)return;yandexSources.set(sender.tab.id,{id:sender.tab.id,windowId:sender.tab.windowId,state:message.state,updated:Date.now()});selectYandexSource()});
+  setInterval(selectYandexSource,1500);
 }
 document.querySelectorAll('[data-yandex-action]').forEach(button=>button.onclick=()=>sendYandexControl(button.dataset.yandexAction));
 $('#yandexProgress').onclick=e=>{const rect=e.currentTarget.getBoundingClientRect();sendYandexControl('seek',{ratio:(e.clientX-rect.left)/rect.width})};

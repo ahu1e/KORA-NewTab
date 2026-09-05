@@ -13,9 +13,15 @@
     return '';
   };
 
-  const getAudio = () => [...document.querySelectorAll('audio')].find((audio) =>
-    !audio.paused || audio.currentTime > 0 || Number.isFinite(audio.duration)
-  ) || null;
+  let selectedAudio = null;
+  const getAudio = () => {
+    const audio = [...document.querySelectorAll('audio')];
+    selectedAudio = audio.find((item) => !item.paused && !item.ended) ||
+      (audio.includes(selectedAudio) && !selectedAudio.ended ? selectedAudio : null) ||
+      audio.find((item) => !item.ended && item.currentTime > 0) ||
+      audio.find((item) => !item.ended && Number.isFinite(item.duration) && item.duration > 0) || null;
+    return selectedAudio;
+  };
 
   const parseTime = (value) => {
     const parts = value.trim().split(':').map(Number);
